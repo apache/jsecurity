@@ -18,6 +18,8 @@
  */
 package org.jsecurity.web;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.jsecurity.codec.Base64;
 import org.jsecurity.subject.AbstractRememberMeManager;
 import org.jsecurity.web.attr.CookieAttribute;
@@ -57,6 +59,8 @@ public class WebRememberMeManager extends AbstractRememberMeManager {
      * The default name of the underlying rememberMe cookie which is <code>rememberMe</code>.
      */
     public static final String DEFAULT_REMEMBER_ME_COOKIE_NAME = "rememberMe";
+
+    private static final Log log = LogFactory.getLog(WebRememberMeManager.class);
 
     protected WebAttribute<String> identityAttribute = null;
 
@@ -189,16 +193,16 @@ public class WebRememberMeManager extends AbstractRememberMeManager {
     }
 
     protected void rememberSerializedIdentity(byte[] serialized) {
-        ServletRequest request = WebUtils.getServletRequest();
-        ServletResponse response = WebUtils.getServletResponse();
+        ServletRequest request = WebUtils.getRequiredServletRequest();
+        ServletResponse response = WebUtils.getRequiredServletResponse();
         //base 64 encode it and store as a cookie:
         String base64 = Base64.encodeToString(serialized);
         getIdentityAttribute().storeValue(base64, request, response);
     }
 
     protected byte[] getSerializedRememberedIdentity() {
-        ServletRequest request = WebUtils.getServletRequest();
-        ServletResponse response = WebUtils.getServletResponse();
+        ServletRequest request = WebUtils.getRequiredServletRequest();
+        ServletResponse response = WebUtils.getRequiredServletResponse();
         String base64 = getIdentityAttribute().retrieveValue(request, response);
         if (base64 != null) {
             return Base64.decode(base64);
@@ -209,8 +213,8 @@ public class WebRememberMeManager extends AbstractRememberMeManager {
     }
 
     protected void forgetIdentity() {
-        ServletRequest request = WebUtils.getServletRequest();
-        ServletResponse response = WebUtils.getServletResponse();
+        ServletRequest request = WebUtils.getRequiredServletRequest();
+        ServletResponse response = WebUtils.getRequiredServletResponse();
         getIdentityAttribute().removeValue(request, response);
     }
 }

@@ -75,9 +75,11 @@ public abstract class AuthenticationFilter extends AccessControlFilter {
     protected void issueSuccessRedirect(ServletRequest request, ServletResponse response) throws Exception {
 
         String successUrl = null;
+        boolean contextRelative = true;
         SavedRequest savedRequest = WebUtils.getAndClearSavedRequest(request);
         if (savedRequest != null && savedRequest.getMethod().equalsIgnoreCase(GET_METHOD)) {
             successUrl = savedRequest.getRequestUrl();
+            contextRelative = false;
         }
 
         if (successUrl == null) {
@@ -85,11 +87,11 @@ public abstract class AuthenticationFilter extends AccessControlFilter {
         }
 
         if (successUrl == null) {
-            throw new IllegalArgumentException("Success URL not available via saved request or by calling getSuccessUrl().  " +
-                    "One of these must be non-null for issueSuccessRedirect() to work.");
+            throw new IllegalStateException("Success URL not available via saved request or by calling " +
+                    "getSuccessUrl().  One of these must be non-null for issueSuccessRedirect() to work.");
         }
 
-        WebUtils.issueRedirect(request, response, successUrl);
+        WebUtils.issueRedirect(request, response, successUrl, null, contextRelative);
     }
 
 }

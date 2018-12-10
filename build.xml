@@ -53,7 +53,7 @@
          details on this convention -->
     <property name="major.version" value="0"/>
     <property name="minor.version" value="9"/>
-    <property name="patch.version" value="0-RC1"/>
+    <property name="patch.version" value="0-RC2"/>
     <property name="version" value="${major.version}.${minor.version}.${patch.version}"/>
     <property name="release.name" value="${project.name}-${version}"/>
 
@@ -135,6 +135,7 @@
  -  =================================================================== -->
     <target name="clean" description="Cleans the entire project">
         <delete dir="${build.dir}"/>
+        <ant dir="samples/quickstart" target="clean"/>
         <ant dir="samples/spring" target="clean"/>
     </target>
 
@@ -274,8 +275,16 @@
         </copy>
     </target>
 
-    <target name="samples.quickstart" depends="jar" description="Creates the JSecurity quickstart .war">
+    <target name="samples.quickstart" depends="jar" description="Creates the quickstart .jar">
         <ant dir="samples/quickstart"/>
+    </target>
+
+    <target name="samples.quickstart.run" depends="samples.quickstart" description="Runs the sample quickstart class">
+        <ant dir="samples/quickstart" target="run"/>
+    </target>
+
+    <target name="samples.web" depends="jar" description="Creates the JSecurity sample webapp .war">
+        <ant dir="samples/web"/>
     </target>
 
     <target name="samples.spring" depends="jar" description="Creates the sample JSecurity/Spring .war">
@@ -287,12 +296,12 @@
         <ant dir="samples/spring-hibernate"/>
     </target>
 
-    <target name="samples" depends="samples.quickstart,samples.spring,samples.spring-hibernate"
+    <target name="samples" depends="samples.quickstart,samples.web,samples.spring,samples.spring-hibernate"
             description="Creates all sample applications"/>
 
-    <target name="samples.quickstart.deploy" depends="samples.quickstart"
+    <target name="samples.web.deploy" depends="samples.web"
             description="Deploys the JSecurity quickstart .war">
-        <ant dir="samples/quickstart" target="deploy"/>
+        <ant dir="samples/web" target="deploy"/>
     </target>
 
     <target name="samples.spring.deploy" depends="samples.spring"
@@ -330,6 +339,11 @@
             <!-- <arg value="-J-Dhttp.proxyHost=${javadoc.proxyhost}"/>
           <arg value="-J-Dhttp.proxyPort=${javadoc.proxyport}"/> -->
             <doctitle><![CDATA[<h1>JSecurity API ${version}</h1>]]></doctitle>
+            <!-- The following <bottom> block is to enable UA tracking via Google Analytics, but it fails the
+                 JavaDoc task on a Windows Sun JDK.  It works fine on Mac OS X JavaDoc.  Since we want this UA
+                 tracking, we use a Mac to build the release that end-users will download, so we leave this block
+                 enabled.  If you want to run JavaDoc in a Windows environment, remove this block, and it will
+                 run successfully. -->
             <bottom>
                 <![CDATA[
                 <i>Copyright &copy; 2004-2008 <a href="http://www.jsecurity.org/" target="_top">JSecurity</a>.</i>
@@ -665,7 +679,7 @@ up the transform (feel free to fix this more elegantly)
         <copy todir="${root.dist.dir}">
             <fileset dir="${root.base.dir}">
                 <type type="file"/>
-                <exclude name="build/**"/>
+                <exclude name="**/build/**"/>
                 <exclude name="**/.svn/**"/>
                 <exclude name="**/lib/**"/>
                 <exclude name="${release.dir.name}"/>

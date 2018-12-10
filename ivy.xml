@@ -20,8 +20,8 @@
 <ivy-module version="2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             xsi:noNamespaceSchemaLocation="http://ant.apache.org/ivy/schemas/ivy.xsd">
 
-    <info organisation="org.jsecurity" module="jsecurity" revision="0.9.0-RC1" status="milestone"
-          publication="20080425000800">
+    <info organisation="org.jsecurity" module="jsecurity" revision="0.9.0-RC2" status="release-candidate"
+          publication="200808142340">
         <license name="Apache License, Version 2.0" url="http://www.apache.org/licenses/LICENSE-2.0.html"/>
         <ivyauthor name="Les Hazlewood" url="http://www.leshazlewood.com"/>
         <description homepage="http://www.jsecurity.org">
@@ -57,6 +57,7 @@
         <dependency org="net.sf.ehcache" name="ehcache" rev="1.4.1" transitive="false" conf="compile,samples"/>
         <dependency org="backport-util-concurrent" name="backport-util-concurrent" rev="3.1" transitive="false"
                     conf="samples"/>
+        <dependency org="xerces" name="xercesImpl" rev="2.8.1" transitive="false" conf="samples"/>
         <dependency org="quartz" name="quartz" rev="1.5.2" transitive="false" conf="compile"/>
         <dependency org="org.springframework" name="spring" rev="2.5.1" transitive="false" conf="compile,samples"/>
         <dependency org="org.springframework" name="spring-webmvc" rev="2.5.1" transitive="false" conf="samples"/>

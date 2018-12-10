@@ -20,6 +20,9 @@ package org.jsecurity.web;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jsecurity.SecurityUtils;
+import org.jsecurity.session.Session;
+import org.jsecurity.subject.Subject;
 import org.jsecurity.util.StringUtils;
 import org.jsecurity.util.ThreadContext;
 
@@ -27,7 +30,6 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
@@ -51,10 +53,21 @@ public class WebUtils {
 
     private static final Log log = LogFactory.getLog(WebUtils.class);
 
+
+    /**
+     * Message displayed when a servlet request or response is not bound to the current thread context when expected.
+     */
+    private static final String NOT_BOUND_ERROR_MESSAGE =
+            "Make sure WebUtils.bind() is being called. (typically called by JSecurityFilter)  " +
+                    "This could also happen when running integration tests that don't properly call WebUtils.bind().";
+
     public static final String SERVLET_REQUEST_KEY = ServletRequest.class.getName() + "_JSECURITY_THREAD_CONTEXT_KEY";
     public static final String SERVLET_RESPONSE_KEY = ServletResponse.class.getName() + "_JSECURITY_THREAD_CONTEXT_KEY";
 
-    // Key used to save a request and later restore it (e.g. when redirecting to a requested page after login)
+    /**
+     * {@link Session Session} key used to save a request and later restore it, for example when redirecting to a
+     * requested page after login, equal to <code>jsecuritySavedRequest</code>.
+     */
     public static final String SAVED_REQUEST_KEY = "jsecuritySavedRequest";
 
 
@@ -201,8 +214,9 @@ public class WebUtils {
     /**
      * Determine the encoding for the given request.
      * Can be overridden in subclasses.
-     * <p>The default implementation checks the request encoding,
-     * falling back to the default encoding specified for this resolver.
+     * <p>The default implementation checks the request's
+     * {@link ServletRequest#getCharacterEncoding() character encoding}, and if that
+     * <code>null</code>, falls back to the {@link #DEFAULT_CHARACTER_ENCODING}.
      *
      * @param request current HTTP request
      * @return the encoding for the request (never <code>null</code>)
@@ -223,12 +237,12 @@ public class WebUtils {
      * This implementation returns the InetAddress resolved from the request's
      * {@link javax.servlet.ServletRequest#getRemoteHost() remoteHost} value.  The returned <code>String</code>
      * is resolved to an InetAddress by calling
-     * {@link InetAddress#getByName(String) InetAddress.getByName(remoteHost)}. If the remote host is null or
-     * <code>getByName(remoteHost)</code> throws an exception, <code>null</code> is returned.
+     * {@link InetAddress#getByName(String) InetAddress.getByName(remoteHost)}. If the remote host is <code>null</code>
+     * or <code>getByName(remoteHost)</code> throws an exception, <code>null</code> is returned.
      *
      * @param request the incoming ServletRequest
      * @return the <code>InetAddress</code> associated with the current request, or <code>null</code> if the
-     * address cannot be resolved/determined.
+     *         address cannot be resolved/determined.
      */
     public static InetAddress getInetAddress(ServletRequest request) {
         InetAddress clientAddress = null;
@@ -289,19 +303,28 @@ public class WebUtils {
     }
 
     /**
-     * Convenience method that simplifies retrieval of a thread-bound ServletRequest.  If there is no
-     * ServletRequest bound to the thread, this method returns <tt>null</tt>.  It is merely a convenient wrapper
-     * for the following:
+     * Convenience method that simplifies retrieval of a required thread-bound ServletRequest.  If there is no
+     * ServletRequest bound to the thread when this method is called, an <code>IllegalStateException</code> is
+     * thrown.
      * <p/>
-     * <code>return (ServletRequest)get( SERVLET_REQUEST_KEY );</code>
+     * This method is basically a convenient wrapper for the following:
+     * <p/>
+     * <code>(ServletRequest){@link ThreadContext#get ThreadContext.get}( SERVLET_REQUEST_KEY );</code>
+     * <p/>
+     * But throws an <code>IllegalStateException</code> if the value is not bound to the <code>ThreadContext</code>.
      * <p/>
      * This method only returns the bound value if it exists - it does not remove it
      * from the thread.  To remove it, one must call {@link #unbindServletRequest() unbindServletRequest} instead.
      *
-     * @return the ServletRequest bound to the thread, or <tt>null</tt> if there isn't one bound.
+     * @return the ServletRequest bound to the thread.  Never returns null.
+     * @throws IllegalStateException if no servlet request is bound in the {@link ThreadContext ThreadContext}.
      */
-    public static ServletRequest getServletRequest() {
-        return (ServletRequest) ThreadContext.get(SERVLET_REQUEST_KEY);
+    public static ServletRequest getRequiredServletRequest() throws IllegalStateException {
+        ServletRequest request = (ServletRequest) ThreadContext.get(SERVLET_REQUEST_KEY);
+        if (request == null) {
+            throw new IllegalStateException("No ServletRequest found in ThreadContext. " + NOT_BOUND_ERROR_MESSAGE);
+        }
+        return request;
     }
 
     /**
@@ -333,7 +356,8 @@ public class WebUtils {
      * <code>return (ServletRequest)ThreadContext.remove( SERVLET_REQUEST_KEY );</code>
      * <p/>
      * If you wish to just retrieve the object from the thread without removing it (so it can be retrieved later during
-     * thread execution), you should use the {@link #getServletRequest() getServletRequest()} method for that purpose.
+     * thread execution), you should use the {@link #getRequiredServletRequest() getRequiredServletRequest()} method
+     * for that purpose.
      *
      * @return the Session object previously bound to the thread, or <tt>null</tt> if there was none bound.
      */
@@ -342,19 +366,28 @@ public class WebUtils {
     }
 
     /**
-     * Convenience method that simplifies retrieval of a thread-bound ServletResponse.  If there is no
-     * ServletResponse bound to the thread, this method returns <tt>null</tt>.  It is merely a convenient wrapper
-     * for the following:
+     * Convenience method that simplifies retrieval of a required thread-bound ServletResponse.  If there is no
+     * ServletResponse bound to the thread when this method is called, an <code>IllegalStateException</code> is
+     * thrown.
      * <p/>
-     * <code>return (ServletResponse)ThreadContext.get( SERVLET_RESPONSE_KEY );</code>
+     * This method is basically a convenient wrapper for the following:
+     * <p/>
+     * <code>return (ServletResponse){@link ThreadContext#get ThreadContext.get}( SERVLET_RESPONSE_KEY );</code>
+     * <p/>
+     * But throws an <code>IllegalStateException</code> if the value is not bound to the <code>ThreadContext</code>.
      * <p/>
      * This method only returns the bound value if it exists - it does not remove it
      * from the thread.  To remove it, one must call {@link #unbindServletResponse() unbindServletResponse} instead.
      *
-     * @return the ServletResponse bound to the thread, or <tt>null</tt> if there isn't one bound.
+     * @return the ServletResponse bound to the thread.  Never returns null.
+     * @throws IllegalStateException if no <code>ServletResponse> is bound in the {@link ThreadContext ThreadContext}
      */
-    public static ServletResponse getServletResponse() {
-        return (ServletResponse) ThreadContext.get(SERVLET_RESPONSE_KEY);
+    public static ServletResponse getRequiredServletResponse() throws IllegalStateException {
+        ServletResponse response = (ServletResponse) ThreadContext.get(SERVLET_RESPONSE_KEY);
+        if (response == null) {
+            throw new IllegalStateException("No ServletResponse found in ThreadContext. " + NOT_BOUND_ERROR_MESSAGE);
+        }
+        return response;
     }
 
     /**
@@ -386,7 +419,8 @@ public class WebUtils {
      * <code>return (ServletResponse)ThreadContext.remove( SERVLET_RESPONSE_KEY );</code>
      * <p/>
      * If you wish to just retrieve the object from the thread without removing it (so it can be retrieved later during
-     * thread execution), you should use the {@link #getServletResponse() getServletResponse()} method for that purpose.
+     * thread execution), you should use the {@link #getRequiredServletResponse() getRequiredServletResponse()} method
+     * for that purpose.
      *
      * @return the Session object previously bound to the thread, or <tt>null</tt> if there was none bound.
      */
@@ -463,19 +497,15 @@ public class WebUtils {
      * @return true if the given parameter is considered "true" - false otherwise.
      */
     public static boolean isTrue(ServletRequest request, String paramName) {
-        String paramValue = getCleanParam(request, paramName);
-
-        if (paramValue == null) {
-            return false;
-        } else {
-            return paramValue.equalsIgnoreCase("true") ||
-                    paramValue.equalsIgnoreCase("t") ||
-                    paramValue.equalsIgnoreCase("1") ||
-                    paramValue.equalsIgnoreCase("enabled") ||
-                    paramValue.equalsIgnoreCase("y") ||
-                    paramValue.equalsIgnoreCase("yes") ||
-                    paramValue.equalsIgnoreCase("on");
-        }
+        String value = getCleanParam(request, paramName);
+        return value != null &&
+                (value.equalsIgnoreCase("true") ||
+                        value.equalsIgnoreCase("t") ||
+                        value.equalsIgnoreCase("1") ||
+                        value.equalsIgnoreCase("enabled") ||
+                        value.equalsIgnoreCase("y") ||
+                        value.equalsIgnoreCase("yes") ||
+                        value.equalsIgnoreCase("on"));
     }
 
     /**
@@ -491,9 +521,9 @@ public class WebUtils {
     }
 
     public static void saveRequest(ServletRequest request) {
+        Subject subject = SecurityUtils.getSubject();
+        Session session = subject.getSession();
         HttpServletRequest httpRequest = toHttp(request);
-        HttpSession session = httpRequest.getSession();
-
         SavedRequest savedRequest = new SavedRequest(httpRequest);
         session.setAttribute(SAVED_REQUEST_KEY, savedRequest);
     }
@@ -501,7 +531,8 @@ public class WebUtils {
     public static SavedRequest getAndClearSavedRequest(ServletRequest request) {
         SavedRequest savedRequest = getSavedRequest(request);
         if (savedRequest != null) {
-            HttpSession session = WebUtils.toHttp(request).getSession();
+            Subject subject = SecurityUtils.getSubject();
+            Session session = subject.getSession();
             session.removeAttribute(SAVED_REQUEST_KEY);
         }
         return savedRequest;
@@ -509,12 +540,11 @@ public class WebUtils {
 
     public static SavedRequest getSavedRequest(ServletRequest request) {
         SavedRequest savedRequest = null;
-
-        HttpSession session = WebUtils.toHttp(request).getSession(false);
+        Subject subject = SecurityUtils.getSubject();
+        Session session = subject.getSession(false);
         if (session != null) {
             savedRequest = (SavedRequest) session.getAttribute(SAVED_REQUEST_KEY);
         }
-
         return savedRequest;
     }
 

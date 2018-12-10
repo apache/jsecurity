@@ -30,7 +30,6 @@
     <property name="dist.jar" value="${root.dist.dir}/${dist.jar.name}"/>
 
     <!-- Module properties -->
-    <property name="module.name" value="api"/>
     <property name="dist.war.name" value="${project.name}-${module.name}.war"/>
     <property name="dist.war" value="${root.base.dir}/build/${dist.war.name}"/>
 
